@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0472f852-3893-45d1-8f23-2f370ad0e305" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="137d534c-1fb4-40c3-9ba1-8d8196c8cbc9" >
+		<wsc:connection wsdlLocation="https://demo.docusign.net/api/3.0/api.asmx?wsdl" service="APIService" port="APIServiceSoap" address="https://demo.docusign.net/api/3.0/api.asmx" >
+			<wsc:web-service-security >
+				<wsc:username-token-security-strategy username="#[vars.username]" password="${docusign.password}" addNonce="true" addCreated="true" />
+			</wsc:web-service-security>
+		</wsc:connection>
+	</wsc:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="42073732-cd39-49d7-bdbe-dfe83044fa4c" file="mule.properties" />
+	<flow name="docusign-example-mule4Flow" doc:id="95ffd68b-1de1-498d-9946-2aca46d55706" >
+		<http:listener doc:name="Listener" doc:id="548e8f99-2a18-4ae4-8b99-9da474d6ee03" config-ref="HTTP_Listener_config" path="/status"/>
+		<ee:transform doc:name="Transform Message" doc:id="50572757-1de9-4b80-a205-23695a454e15" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://www.docusign.net/API/3.0
+---
+{
+	ns0#RequestStatus: {
+		ns0#EnvelopeID: "5d92cab0-cc2f-41be-a44a-65c6a237b4c5"
+	}
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="username" ><![CDATA[%dw 2.0
+output application/json
+---
+"[" ++ Mule::p('docusign.integrator') ++ "]" ++ Mule::p('docusign.username')]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<wsc:consume operation="RequestStatus" doc:name="DocuSign SOAP Call" doc:id="b8d4a45f-7eea-40b0-844d-21372c9d016a" config-ref="Web_Service_Consumer_Config">
+		</wsc:consume>
+		<ee:transform doc:name="Transform Message" doc:id="ca4f5e96-2003-4e5d-90e7-8bfb5e5b2712" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
